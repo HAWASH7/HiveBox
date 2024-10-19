@@ -1,4 +1,4 @@
-from flask import Flask, jsonify
+from flask import Flask, jsonify, request
 import requests
 from flask_sqlalchemy import SQLAlchemy
 
@@ -42,6 +42,21 @@ def get_sensor_data():
         return jsonify(data)  # Return the fetched data as JSON
     else:
         return jsonify({"error": "Failed to fetch data"}), 500
+
+@app.route('/sensors/<int:sensor_id>', methods=['PUT'])
+def update_sensor(sensor_id):
+    data = request.get_json()
+    sensor = Sensor.query.get(sensor_id)
+
+    if sensor is None:
+        return jsonify({"error": "Sensor not found"}), 404
+
+    sensor.location = data.get('location', sensor.location)
+    sensor.temperature = data.get('temperature', sensor.temperature)
+    sensor.humidity = data.get('humidity', sensor.humidity)
+
+    db.session.commit()  # Commit the changes
+    return jsonify({"message": "Sensor updated successfully"}), 200
 
 if __name__ == '__main__':
     with app.app_context():
