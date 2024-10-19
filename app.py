@@ -58,6 +58,17 @@ def update_sensor(sensor_id):
     db.session.commit()  # Commit the changes
     return jsonify({"message": "Sensor updated successfully"}), 200
 
+@app.route('/sensors/<int:sensor_id>', methods=['DELETE'])
+def delete_sensor(sensor_id):
+    sensor = Sensor.query.get(sensor_id)
+
+    if sensor is None:
+        return jsonify({"error": "Sensor not found"}), 404
+
+    db.session.delete(sensor)
+    db.session.commit()  # Commit the deletion
+    return jsonify({"message": "Sensor deleted successfully"}), 200
+
 if __name__ == '__main__':
     with app.app_context():
         db.create_all()  # Create the database tables if they don't exist
