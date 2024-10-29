@@ -1,0 +1,23 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: hivebox-app
+  labels:
+    app: hivebox
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: hivebox
+  template:
+    metadata:
+      labels:
+        app: hivebox
+    spec:
+      containers:
+        - name: hivebox
+          ports:
+            - containerPort: 8000  
+          env:
+            - name: SENSEBOX_TEMP
+              value: "20"
