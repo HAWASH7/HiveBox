@@ -1,0 +1,6 @@
+resources:
+  - ../k8s/redis.yaml
+  - ../k8s/minio.yaml
+  - ../k8s/redis-service.yaml
+  - ../k8s/minio-service.yaml
+  - ../hivebox/templates/deployment.yaml
