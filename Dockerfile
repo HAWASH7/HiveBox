@@ -1,12 +1,13 @@
-FROM python:3.8-slim
+FROM python:3.9-slim
 
-WORKDIR /usr/src/app
+WORKDIR /app
 
-COPY requirements.txt ./
+COPY . .
+
 RUN pip install --no-cache-dir -r requirements.txt
 
-COPY ./src ./src
+EXPOSE 80
 
-EXPOSE 8000
+ENV NAME World
 
-CMD [ "python", "./src/app.py" ]
+CMD ["python", "app.py"]
