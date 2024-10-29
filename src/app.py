@@ -1,59 +1,50 @@
-# src/app.py
-
 from flask import Flask, jsonify
-from datetime import datetime, timedelta
-import random
-import os
-from prometheus_client import generate_latest, CollectorRegistry, Gauge
+import redis
+import boto3
+import time
+import threading
 
 app = Flask(__name__)
 
-app_version = 'v0.0.1'
+redis_client = redis.StrictRedis(host='localhost', port=6379, db=0)
 
-senseBox_data = [
-    {'temperature': random.uniform(15.0, 30.0), 'timestamp': datetime.now() - timedelta(minutes=random.randint(0, 59))}
-    for _ in range(10) 
+minio_client = boto3.client(
+    's3',
+    endpoint_url='http://localhost:9000',  
+    aws_secret_access_key='minioadmin'
+)
 
-@app.route('/version', methods=['GET'])
-def version():
-    return jsonify({'version': app_version})
+SENSEBOXES = [...]
+STORE_INTERVAL = 300 
+last_cached_time = time.time()
 
-@app.route('/temperature', methods=['GET'])
-def temperature():
-    one_hour_ago = datetime.now() - timedelta(hours=1)
-    recent_readings = [data['temperature'] for data in senseBox_data if data['timestamp'] >= one_hour_ago]
+def store_data():
+    while True:
+        print("Storing data in MinIO...")
+        time.sleep(STORE_INTERVAL)
 
-    if not recent_readings:
-        return jsonify({'error': 'No recent temperature data available.'}), 404
-
-    average_temp = sum(recent_readings) / len(recent_readings)
-    return jsonify({'average_temperature': average_temp})
-
-if __name__ == "__main__":
-    app.run(host='0.0.0.0', port=8000)
-
-
-SENSEBOX_TEMP = os.getenv("SENSEBOX_TEMP", "20")  
-
-registry = CollectorRegistry()
-temperature_gauge = Gauge('average_temperature', 'Average temperature from senseBox', registry=registry)
+@app.route('/store', methods=['POST'])
+def store():
+    print("Storing data immediately in MinIO...")
+    return jsonify({"message": "Data stored"}), 200
 
 @app.route('/metrics', methods=['GET'])
 def metrics():
-    return generate_latest(registry), 200
+    return jsonify({"custom_metrics": "..."})  
 
-@app.route('/temperature', methods=['GET'])
-def temperature():
-    try:
-        avg_temp = float(SENSEBOX_TEMP)
-    except ValueError:
-        return jsonify({"error": "Invalid temperature value"}), 400
+@app.route('/readyz', methods=['GET'])
+def readyz():
+    global last_cached_time
+    sensebox_failures = sum(1 for box in SENSEBOXES if not is_sensebox_accessible(box))
+    
+    if (time.time() - last_cached_time > 300) and (sensebox_failures > len(SENSEBOXES) / 2):
+        return jsonify({"status": "unhealthy"}), 503
 
-    if avg_temp < 10:
-        status = "Too Cold"
-    elif 11 <= avg_temp <= 36:
-        status = "Good"
-    else:
-        status = "Too Hot"
+    return jsonify({"status": "healthy"}), 200
 
-    return jsonify({"average_temperature": avg_temp, "status": status}), 200
+def is_sensebox_accessible(box):
+    return True
+
+if __name__ == '__main__':
+    threading.Thread(target=store_data, daemon=True).start()  
+    app.run(debug=True)
